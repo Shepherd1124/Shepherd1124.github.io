@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>钢材质量指标查询系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:"微软雅黑";}
+        body{background:#f5f7fa;}
+        /* 登录样式 */
+        .login-box{width:400px;margin:120px auto;background:#fff;padding:35px;border-radius:8px;box-shadow:0 0 15px #ddd;}
+        .login-box h3{text-align:center;margin-bottom:25px;color:#2c3e50;font-size:20px;}
+        .login-item{margin-bottom:18px;}
+        .login-item label{display:block;margin-bottom:6px;color:#555;}
+        .login-item input{width:100%;height:40px;padding:0 12px;border:1px solid #ccc;border-radius:4px;}
+        .login-btn{width:100%;height:42px;background:#1677ff;color:#fff;border:none;border-radius:4px;font-size:16px;cursor:pointer;}
+        .tip{color:red;font-size:13px;margin-top:10px;text-align:center;display:none;}
+        /* 主页面 */
+        .main-page{display:none;padding:20px;}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;background:#fff;padding:15px;border-radius:6px;}
+        .logout{padding:6px 15px;background:#f53f3f;color:#fff;border:none;border-radius:4px;cursor:pointer;}
+        .box{background:#fff;border-radius:8px;padding:25px;box-shadow:0 2px 8px #eee;max-width:1400px;margin:0 auto;}
+        h2{text-align:center;color:#2c3e50;margin-bottom:25px;}
+        /* 查询区 */
+        .search-row{display:flex;flex-wrap:wrap;gap:15px;margin-bottom:20px;align-items:center;}
+        .search-item label{display:block;margin-bottom:5px;color:#555;}
+        .search-item input,.search-item select{width:180px;height:36px;padding:0 10px;border:1px solid #ccc;border-radius:4px;}
+        .btn{padding:8px 22px;border:none;border-radius:4px;cursor:pointer;font-size:15px;}
+        .search-btn{background:#1677ff;color:#fff;}
+        .reset-btn{background:#999;color:#fff;}
+        .export-btn{background:#00b42a;color:#fff;}
+        .look-trend{background:#722ed1;color:#fff;padding:5px 12px;border-radius:4px;border:none;cursor:pointer;margin-top:8px;}
+        /* 指标按钮 */
+        .btn-group{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;}
+        .tab-btn{padding:7px 14px;border:1px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;}
+        .tab-btn.active{background:#1677ff;color:#fff;border-color:#1677ff;}
+        /* 数据面板 */
+        .panel{display:none;margin-top:15px;}
+        .table-title{font-size:16px;font-weight:bold;margin-bottom:10px;color:#333;border-left:4px solid #1677ff;padding-left:10px;}
+        table{width:100%;border-collapse:collapse;margin-bottom:10px;}
+        th,td{border:1px solid #ddd;padding:10px;text-align:center;}
+        th{background:#f0f5ff;}
+    </style>
+</head>
+<body>
+<!-- 登录页 -->
+<div class="login-box" id="loginPage">
+    <h3>钢材质检数据查询系统</h3>
+    <div class="login-item">
+        <label>登录账号</label>
+        <input type="text" id="username" placeholder="请输入账号">
+    </div>
+    <div class="login-item">
+        <label>登录密码</label>
+        <input type="password" id="pwd" placeholder="请输入密码">
+    </div>
+    <div class="tip" id="errTip">账号或密码错误，请重新输入</div>
+    <button class="login-btn" onclick="login()">立即登录</button>
+</div>
+
+<!-- 主系统页面 -->
+<div class="main-page" id="mainPage">
+    <div class="header">
+        <h3>轴承钢质量检测数据管理查询平台</h3>
+        <span>当前登录用户：<span id="showUser">管理员</span></span>
+        <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+    <div class="box">
+        <h2>炉号/钢种/规格/检验日期/批次综合查询</h2>
+        <div class="search-row">
+            <div class="search-item">
+                <label>炉号</label>
+                <input type="text" id="furnace" placeholder="熔炼炉号">
+            </div>
+            <div class="search-item">
+                <label>钢种</label>
+                <select id="steelGrade">
+                    <option value="">请选择</option>
+                    <option>GCr15</option>
+                    <option>GCr15SiMn</option>
+                    <option>20Cr2Ni4A</option>
+                </select>
+            </div>
+            <div class="search-item">
+                <label>规格</label>
+                <input type="text" id="spec" placeholder="Φ60、80×80">
+            </div>
+            <div class="search-item">
+                <label>检验开始日期</label>
+                <input type="date" id="startCheckDate">
+            </div>
+            <div class="search-item">
+                <label>检验结束日期</label>
+                <input type="date" id="endCheckDate">
+            </div>
+            <div class="search-item">
+                <label>批次号</label>
+                <input type="text" id="batch" placeholder="生产批次">
+            </div>
+            <div style="margin-top:22px;display:flex;gap:10px;">
+                <button class="btn search-btn" onclick="doQuery()">立即查询</button>
+                <button class="btn reset-btn" onclick="doReset()">重置</button>
+                <button class="btn export-btn">导出数据</button>
+            </div>
+        </div>
+
+        <!-- 检测项目切换按钮 -->
+        <div class="btn-group" id="btnGroup">
+            <button class="tab-btn" data-type="inclusion">夹杂物</button>
+            <button class="tab-btn" data-type="carbide">碳化物</button>
+            <button class="tab-btn" data-type="decar">脱碳</button>
+            <button class="tab-btn" data-type="structure">组织</button>
+            <button class="tab-btn" data-type="grain">晶粒度</button>
+            <button class="tab-btn" data-type="lowmag">低倍</button>
+            <button class="tab-btn" data-type="hardness">硬度</button>
+            <button class="tab-btn" data-type="impact">冲击</button>
+            <button class="tab-btn" data-type="strength">强度</button>
+            <button class="tab-btn" data-type="harden">淬透性</button>
+            <button class="tab-btn" data-type="element">成分</button>
+        </div>
+
+        <!-- 1.夹杂物 -->
+        <div class="panel" id="panel-inclusion">
+            <div class="table-title">非金属夹杂物检测</div>
+            <table>
+                <tr><th>A类细</th><th>A类粗</th><th>B类细</th><th>B类粗</th><th>C类</th><th>D类</th><th>DS类</th></tr>
+                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('inclusion')">查看历史趋势图</button>
+        </div>
+
+        <!-- 2.碳化物 -->
+        <div class="panel" id="panel-carbide">
+            <div class="table-title">碳化物检测</div>
+            <table>
+                <tr><th>不均匀度</th><th>液析碳化物</th><th>网状碳化物</th><th>带状碳化物</th></tr>
+                <tr><td></td><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('carbide')">查看历史趋势图</button>
+        </div>
+
+        <!-- 3.脱碳 -->
+        <div class="panel" id="panel-decar">
+            <div class="table-title">脱碳层检测</div>
+            <table>
+                <tr><th>全脱碳层(mm)</th><th>总脱碳层(mm)</th><th>脱碳状态</th></tr>
+                <tr><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('decar')">查看历史趋势图</button>
+        </div>
+
+        <!-- 4.组织 -->
+        <div class="panel" id="panel-structure">
+            <div class="table-title">显微组织检测</div>
+            <table>
+                <tr><th>基体组织</th><th>珠光体等级</th><th>马氏体等级</th><th>异常组织</th></tr>
+                <tr><td></td><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('structure')">查看历史趋势图</button>
+        </div>
+
+        <!-- 5.晶粒度 -->
+        <div class="panel" id="panel-grain">
+            <div class="table-title">晶粒度检测</div>
+            <table>
+                <tr><th>实际晶粒度</th><th>奥氏体晶粒度</th><th>混晶情况</th></tr>
+                <tr><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('grain')">查看历史趋势图</button>
+        </div>
+
+        <!-- 6.低倍 -->
+        <div class="panel" id="panel-lowmag">
+            <div class="table-title">低倍宏观检验</div>
+            <table>
+                <tr><th>中心疏松</th><th>一般疏松</th><th>成分偏析</th><th>白点</th><th>裂纹</th></tr>
+                <tr><td></td><td></td><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('lowmag')">查看历史趋势图</button>
+        </div>
+
+        <!-- 7.硬度 -->
+        <div class="panel" id="panel-hardness">
+            <div class="table-title">硬度检测</div>
+            <table>
+                <tr><th>HRC</th><th>HB</th><th>HV</th><th>硬度差值</th></tr>
+                <tr><td></td><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('hardness')">查看历史趋势图</button>
+        </div>
+
+        <!-- 8.冲击 -->
+        <div class="panel" id="panel-impact">
+            <div class="table-title">冲击性能检测</div>
+            <table>
+                <tr><th>常温冲击功(J)</th><th>低温冲击功(J)</th><th>冲击断面</th></tr>
+                <tr><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('impact')">查看历史趋势图</button>
+        </div>
+
+        <!-- 9.强度 -->
+        <div class="panel" id="panel-strength">
+            <div class="table-title">力学强度检测</div>
+            <table>
+                <tr><th>抗拉强度MPa</th><th>屈服强度MPa</th><th>伸长率</th><th>断面收缩率</th></tr>
+                <tr><td></td><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('strength')">查看历史趋势图</button>
+        </div>
+
+        <!-- 10.淬透性 -->
+        <div class="panel" id="panel-harden">
+            <div class="table-title">淬透性检测</div>
+            <table>
+                <tr><th>端淬J值</th><th>淬硬层深度</th><th>临界淬透直径</th></tr>
+                <tr><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('harden')">查看历史趋势图</button>
+        </div>
+
+        <!-- 11.化学成分 -->
+        <div class="panel" id="panel-element">
+            <div class="table-title">化学成分检测</div>
+            <table>
+                <tr><th>C</th><th>Si</th><th>Mn</th><th>P</th><th>S</th><th>Cr</th><th>Ni</th><th>Mo</th></tr>
+                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            </table>
+            <button class="look-trend" onclick="openTrendWin('element')">查看历史趋势图</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 账号配置
+const userList = [
+    {user:"admin",pwd:"123456",name:"系统管理员"},
+    {user:"jc",pwd:"666666",name:"质检人员"},
+    {user:"sc",pwd:"888888",name:"生产人员"}
+];
+// 登录
+function login(){
+    let u=document.getElementById("username").value.trim();
+    let p=document.getElementById("pwd").value.trim();
+    let tip=document.getElementById("errTip");
+    let ok=false,name="";
+    userList.forEach(item=>{
+        if(u===item.user&&p===item.pwd){ok=true;name=item.name;}
+    });
+    if(ok){
+        tip.style.display="none";
+        document.getElementById("loginPage").style.display="none";
+        document.getElementById("mainPage").style.display="block";
+        document.getElementById("showUser").innerText=name;
+    }else tip.style.display="block";
+}
+// 退出
+function logout(){
+    document.getElementById("loginPage").style.display="block";
+    document.getElementById("mainPage").style.display="none";
+    document.getElementById("username").value="";
+    document.getElementById("pwd").value="";
+    doReset();
+}
+
+// 趋势数据配置
+const batchLabel=["1批次","2批次","3批次","4批次","5批次","6批次"];
+const trendData={
+    inclusion: {title:"非金属夹杂物等级趋势",data:[1.1,1.3,1.0,1.2,1.1,1.0]},
+    carbide: {title:"碳化物等级变化趋势",data:[2.0,1.8,1.9,1.7,1.8,1.6]},
+    decar: {title:"脱碳层厚度趋势(mm)",data:[0.12,0.11,0.13,0.10,0.11,0.09]},
+    structure: {title:"显微组织等级趋势",data:[3,2.8,3.1,2.9,2.7,2.8]},
+    grain: {title:"晶粒度级别趋势",data:[7.0,6.8,7.2,6.9,7.1,6.8]},
+    lowmag: {title:"低倍缺陷综合等级趋势",data:[1.5,1.4,1.6,1.3,1.4,1.2]},
+    hardness: {title:"钢材硬度HRC趋势",data:[61.5,62.0,61.8,62.3,61.9,62.1]},
+    impact: {title:"冲击功数值趋势(J)",data:[32,33,31,34,33,35]},
+    strength: {title:"抗拉强度趋势(MPa)",data:[860,872,858,875,868,880]},
+    harden: {title:"淬硬层深度趋势(mm)",data:[18,17.5,18.2,17.8,18.1,17.6]},
+    element: {title:"碳元素含量变化趋势(%)",data:[0.95,0.96,0.94,0.97,0.95,0.96]}
+};
+
+// 新开独立窗口展示趋势图
+function openTrendWin(type){
+    let info = trendData[type];
+    let winContent = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${info.title}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+<style>
+body{padding:30px;background:#f8f9fa;}
+h3{text-align:center;color:#333;margin-bottom:30px;font-size:20px;}
+#mainChart{width:100%;height:500px;}
+</style>
+</head>
+<body>
+<h3>${info.title}</h3>
+<canvas id="mainChart"></canvas>
+<script>
+const labels = ${JSON.stringify(batchLabel)};
+const dataSet = ${JSON.stringify(info.data)};
+const ctx = document.getElementById('mainChart').getContext('2d');
+new Chart(ctx,{
+    type:'line',
+    data:{
+        labels:labels,
+        datasets:[{
+            label:'指标数值',
+            data:dataSet,
+            borderColor:'#1677ff',
+            backgroundColor:'rgba(22,119,255,0.15)',
+            tension:0.3,
+            fill:true
+        }]
+    },
+    options:{
+        responsive:true,
+        maintainAspectRatio:false
+    }
+});
+<\/script>
+</body>
+</html>`;
+    let trendWin = window.open("","趋势分析窗口","width=1100,height=650,scrollbars=yes");
+    trendWin.document.write(winContent);
+    trendWin.document.close();
+}
+
+// 切换检测项目面板
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.onclick=function(){
+        let type=this.dataset.type;
+        document.querySelectorAll(".panel").forEach(p=>p.style.display="none");
+        document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+        document.getElementById("panel-"+type).style.display="block";
+        this.classList.add("active");
+    }
+});
+
+// 查询按钮（增加日期区间校验）
+function doQuery(){
+    let sDate = document.getElementById("startCheckDate").value;
+    let eDate = document.getElementById("endCheckDate").value;
+
+    // 校验逻辑
+    if((sDate && !eDate)){
+        alert("已填写检验开始日期，请补充检验结束日期！");
+        return;
+    }
+    if((!sDate && eDate)){
+        alert("已填写检验结束日期，请补充检验开始日期！");
+        return;
+    }
+    if(sDate && eDate && new Date(sDate) > new Date(eDate)){
+        alert("检验开始日期不能晚于检验结束日期，请重新选择！");
+        return;
+    }
+
+    alert(`查询条件已提交\n检验日期区间：${sDate || '不限'} ~ ${eDate || '不限'}\n可切换项目查看数据并打开趋势图`);
+}
+
+// 重置
+function doReset(){
+    document.querySelectorAll(".search-row input,.search-row select").forEach(el=>el.value="");
+    document.querySelectorAll(".panel").forEach(p=>p.style.display="none");
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+}
+</script>
+</body>
+</html>
